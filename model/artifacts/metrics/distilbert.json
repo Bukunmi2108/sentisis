@@ -1,0 +1,138 @@
+{
+  "model_name": "distilbert-int8",
+  "labels": [
+    "negative",
+    "neutral",
+    "positive"
+  ],
+  "splits": {
+    "validation": {
+      "n_samples": 2000,
+      "accuracy": 0.7085,
+      "per_class": {
+        "negative": {
+          "precision": 0.5563063063063063,
+          "recall": 0.7916666666666666,
+          "f1": 0.6534391534391535,
+          "support": 312
+        },
+        "neutral": {
+          "precision": 0.7448979591836735,
+          "recall": 0.5880322209436134,
+          "f1": 0.6572347266881029,
+          "support": 869
+        },
+        "positive": {
+          "precision": 0.7574712643678161,
+          "recall": 0.8046398046398047,
+          "f1": 0.7803433984606276,
+          "support": 819
+        }
+      },
+      "macro": {
+        "precision": 0.6862251766192653,
+        "recall": 0.7281128974166949,
+        "f1": 0.6970057595292948,
+        "support": 2000
+      },
+      "weighted": {
+        "precision": 0.7206264298077105,
+        "recall": 0.7085,
+        "f1": 0.7070556183521156,
+        "support": 2000
+      },
+      "confusion": [
+        [
+          247,
+          48,
+          17
+        ],
+        [
+          164,
+          511,
+          194
+        ],
+        [
+          33,
+          127,
+          659
+        ]
+      ]
+    },
+    "test": {
+      "n_samples": 12284,
+      "accuracy": 0.6729892543145555,
+      "per_class": {
+        "negative": {
+          "precision": 0.643479984145858,
+          "recall": 0.817472306143001,
+          "f1": 0.720115324905744,
+          "support": 3972
+        },
+        "neutral": {
+          "precision": 0.7564610011641444,
+          "recall": 0.5472460838807478,
+          "f1": 0.6350664581704457,
+          "support": 5937
+        },
+        "positive": {
+          "precision": 0.6017669045191981,
+          "recall": 0.7456842105263158,
+          "f1": 0.6660398646107559,
+          "support": 2375
+        }
+      },
+      "macro": {
+        "precision": 0.6672359632764002,
+        "recall": 0.7034675335166881,
+        "f1": 0.6737405492289819,
+        "support": 12284
+      },
+      "weighted": {
+        "precision": 0.690020177399216,
+        "recall": 0.6729892543145555,
+        "f1": 0.6685552190763674,
+        "support": 12284
+      },
+      "confusion": [
+        [
+          3247,
+          554,
+          171
+        ],
+        [
+          1687,
+          3249,
+          1001
+        ],
+        [
+          112,
+          492,
+          1771
+        ]
+      ]
+    }
+  },
+  "fp32_reference": {
+    "validation": {
+      "accuracy": 0.717,
+      "macro_f1": 0.7035894669883237
+    },
+    "test": {
+      "accuracy": 0.6746173884728102,
+      "macro_f1": 0.675519815305908
+    }
+  },
+  "train_config": {
+    "base_model": "distilbert-base-uncased",
+    "max_length": 96,
+    "epochs": 3,
+    "batch_size": 32,
+    "learning_rate": 2e-05,
+    "weight_decay": 0.01,
+    "warmup_ratio": 0.06,
+    "seed": 42,
+    "fp16": true,
+    "metric_for_best_model": "eval_macro_f1"
+  }
+}
