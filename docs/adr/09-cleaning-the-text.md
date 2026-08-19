@@ -1,7 +1,7 @@
 # 09 — Cleaning the text
 
-**Status:** Accepted. Whether TweetEval pre-normalises mentions and links is verified during data
-preparation, not assumed here.
+**Status:** Accepted. Step 1 was added after measuring the data — see
+[finding 01](../findings/01-data.md).
 
 ## Context
 
@@ -18,16 +18,17 @@ Two stages, both pure functions in `model/preprocess.py`, used by training **and
 
 **Stage A — `normalize(text)`**, used by both models and by the API:
 
-1. Unicode NFKC normalisation
-2. Links become `[url]`
-3. Mentions become `[user]`
-4. Emoji become text tags, written as `[fire]`
-5. Collapse repeated whitespace and strip
+1. Expand HTML entities and escaped unicode, repeatedly until the text stops changing
+2. Unicode NFKC normalisation
+3. Links become `[url]`
+4. Mentions become `[user]`
+5. Emoji become text tags, written as `[fire]`
+6. Collapse repeated whitespace and strip
 
 **Stage B — `to_bow(text)`**, TF-IDF only, applied after stage A:
 
-6. Lowercase
-7. Keep letters and spaces only
-8. Collapse whitespace and strip
+7. Lowercase
+8. Keep letters and spaces only
+9. Collapse whitespace and strip
 
 DistilBERT gets stage A. TF-IDF gets stage B.
