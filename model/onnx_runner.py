@@ -24,9 +24,12 @@ class OnnxSentimentModel:
         tokenizer_path: Path,
         *,
         max_length: int = DEFAULT_MAX_LENGTH,
+        session_options: Any = None,
     ) -> None:
         self.session: Any = ort.InferenceSession(
-            str(model_path), providers=["CPUExecutionProvider"]
+            str(model_path),
+            sess_options=session_options,
+            providers=["CPUExecutionProvider"],
         )
         self.tokenizer: Any = _load_tokenizer(tokenizer_path, max_length)
         self.max_length = max_length
@@ -52,7 +55,7 @@ class OnnxSentimentModel:
         probabilities = np.zeros((len(cleaned), 3), dtype=np.float32)
         for start in range(0, len(cleaned), batch_size):
             chunk = self.logits(cleaned[start : start + batch_size])
-            probabilities[start : start + len(chunk)] = _softmax(chunk)
+            probabilities[start : start + len(chunk)] = softmax(chunk)
         return probabilities
 
     def predict(self, texts: Sequence[str], *, batch_size: int = DEFAULT_BATCH_SIZE) -> list[int]:
@@ -62,7 +65,8 @@ class OnnxSentimentModel:
         return [int(index) for index in self.predict_proba(texts, batch_size=batch_size).argmax(-1)]
 
 
-def _softmax(logits: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+def softmax(logits: npt.NDArray[np.float32]) -> npt.NDArray[np.float32]:
+    """Turn a batch of logit rows into probability rows."""
     shifted = logits - logits.max(axis=-1, keepdims=True)
     exponentiated = np.exp(shifted)
     return np.asarray(exponentiated / exponentiated.sum(axis=-1, keepdims=True), dtype=np.float32)
