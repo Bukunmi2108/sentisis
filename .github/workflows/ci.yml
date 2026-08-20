@@ -94,3 +94,25 @@ jobs:
       - name: Container logs
         if: always()
         run: docker logs sentisis-ci
+
+  deploy:
+    needs: [lint, test, requirements, docker]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Authorise the deployment key
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "${{ secrets.CONTABO_VPS_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "${{ secrets.CONTABO_VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+      - name: Deploy the exact tested revision
+        run: |
+          ssh -o BatchMode=yes \
+            "${{ secrets.CONTABO_VPS_USER }}@${{ secrets.CONTABO_VPS_HOST }}" \
+            "/opt/workspace/apps/sentisis/deploy ${{ github.sha }}"
+      - name: Remove the key
+        if: always()
+        run: rm -f ~/.ssh/id_ed25519

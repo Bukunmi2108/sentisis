@@ -1,0 +1,78 @@
+name: sentisis
+
+x-sleep-labels: &sleep-labels
+  sablier.enable: "true"
+  sablier.group: sentisis
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: workspace-sentisis-redis
+    command:
+      - redis-server
+      - --save
+      - ""
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 128mb
+      - --maxmemory-policy
+      - allkeys-lru
+    restart: unless-stopped
+    labels: *sleep-labels
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    mem_limit: 192m
+    cpus: 0.25
+    stop_grace_period: 10s
+    security_opt:
+      - no-new-privileges:true
+
+  api:
+    build:
+      context: ${SENTISIS_SOURCE_ROOT:-./source}
+    image: sentisis-api:${SENTISIS_IMAGE_TAG:-local}
+    container_name: workspace-sentisis
+    env_file:
+      - ${SENTISIS_ENV_FILE:-./.env}
+    environment:
+      SENTISIS_REDIS_URL: redis://redis:6379/0
+    restart: unless-stopped
+    labels: *sleep-labels
+    expose:
+      - "8000"
+    networks:
+      - internal
+      - gateway
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/ready', timeout=4).status == 200 else 1)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    mem_limit: 1g
+    cpus: 1.0
+    stop_grace_period: 15s
+    security_opt:
+      - no-new-privileges:true
+
+networks:
+  internal:
+    name: workspace_sentisis_internal
+    internal: true
+  gateway:
+    name: workspace_gateway
+    external: true
