@@ -11,12 +11,13 @@ A fresh clone has to be able to make predictions immediately, with no setup step
 
 Commit to git:
 
-- `model/artifacts/model_int8.onnx` — the quantised model I serve, around 65 MB
-- `model/artifacts/baseline.joblib` — the TF-IDF and logistic regression pipeline, a few MB
-- `model/artifacts/tokenizer/` — small
+- `model/artifacts/distilbert/model_int8.onnx` — the quantised model I serve, 65 MB
+- `model/artifacts/baseline.joblib` — the TF-IDF and logistic regression pipeline, 5.7 MB
+- `model/artifacts/distilbert/tokenizer/` — small
 
-The full-precision DistilBERT checkpoint (around 265 MB) is **not** committed. It goes to the
-Hugging Face Hub and is linked from the README.
+The full-precision checkpoint (265 MB) is **not** committed and is not published. Nothing here
+needs it — the fp32 scores it is compared against are in `training_summary.json`, and the Kaggle
+notebook reproduces it from a fixed seed.
 
 ## Why
 

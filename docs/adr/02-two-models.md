@@ -1,6 +1,6 @@
 # 02 — Two models, and how I pick between them
 
-**Status:** Accepted. Measured results go in the README after training.
+**Status:** Accepted. DistilBERT won on macro-F1, 0.6737 against the baseline's 0.5977.
 
 ## Context
 
@@ -14,8 +14,11 @@ different winners.
 
 **Baseline:** TF-IDF (unigrams and bigrams) into multinomial logistic regression.
 
-**Transformer:** `distilbert-base-uncased`, fully fine-tuned. Max length 128, 3 epochs,
+**Transformer:** `distilbert-base-uncased`, fully fine-tuned. Max length 96, 3 epochs,
 learning rate 2e-5, batch size 32.
+
+Max length is 96 because measured wordpiece lengths are p50 30, p95 41, p99 47. It truncates
+0.02% of test; 128 would only pad further.
 
 **The winner is whichever has the higher macro-F1 on the test split.** I fixed this rule
 before training either model.

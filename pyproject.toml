@@ -76,6 +76,12 @@ venv = ".venv"
 reportMissingTypeStubs = "none"
 
 [[tool.pyright.executionEnvironments]]
+root = "tests/integration"
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportUnknownArgumentType = "none"
+
+[[tool.pyright.executionEnvironments]]
 root = "model/notebooks"
 reportUnknownMemberType = "none"
 reportUnknownVariableType = "none"

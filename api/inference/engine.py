@@ -7,6 +7,8 @@ from typing import Any, cast
 import onnxruntime as ort
 
 from api.core.config import Settings
+from api.errors import SentisisError
+from api.inference.cache import PredictionCache
 from model.onnx_runner import OnnxSentimentModel, softmax
 from model.preprocess import normalize
 
@@ -56,17 +58,47 @@ class Engine:
         )
 
     def predict(self, texts: Sequence[str]) -> list[Prediction]:
-        """Classify every text, returning one prediction per input in request order."""
-        if not texts:
-            return []
+        """Clean every text, then classify it."""
         cleaned = [normalize(text) for text in texts]
-        unique = list(dict.fromkeys(cleaned))
-        probabilities = softmax(self._model.logits(unique))
-        by_text = {
-            text: to_prediction(row) for text, row in zip(unique, probabilities, strict=True)
-        }
-        return [by_text[text] for text in cleaned]
+        return [to_prediction(row) for row in self._rows(cleaned)]
+
+    async def predict_with_cache(
+        self, cleaned: Sequence[str], cache: PredictionCache | None
+    ) -> tuple[list[Prediction], list[bool]]:
+        """Classify already-cleaned text, serving what the cache holds and computing the rest."""
+        if not cleaned:
+            return [], []
+        stored = await cache.get_many(cleaned) if cache is not None else {}
+        missing = [text for text in dict.fromkeys(cleaned) if text not in stored]
+        computed = dict(zip(missing, self._rows(missing), strict=True))
+        if cache is not None and computed:
+            await cache.set_many(computed)
+
+        rows = {**stored, **computed}
+        return (
+            [to_prediction(rows[text]) for text in cleaned],
+            [text in stored for text in cleaned],
+        )
 
     def canary(self) -> Prediction:
         """Run one fixed prediction, so readiness proves the session actually works."""
         return self.predict([CANARY_TEXT])[0]
+
+    def _rows(self, cleaned: Sequence[str]) -> list[list[float]]:
+        """Run the session over the unique texts and fan the results back out in order."""
+        if not cleaned:
+            return []
+        unique = list(dict.fromkeys(cleaned))
+        try:
+            probabilities = softmax(self._model.logits(unique))
+        except Exception as error:
+            raise SentisisError(
+                "inference_failed",
+                f"the model failed on {len(unique)} text(s)",
+                retryable=True,
+            ) from error
+        by_text = {
+            text: [float(value) for value in row]
+            for text, row in zip(unique, probabilities, strict=True)
+        }
+        return [by_text[text] for text in cleaned]

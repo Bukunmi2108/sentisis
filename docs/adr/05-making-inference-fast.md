@@ -1,6 +1,6 @@
 # 05 — Making inference fast
 
-**Status:** Accepted, pending measurement. The latency and F1 comparison is filled in after export.
+**Status:** Accepted and measured. Int8 ships.
 
 ## Context
 
@@ -25,3 +25,15 @@ I actually deploy.
 
 Int8 usually gives a solid CPU speedup and a roughly 4x smaller weight file. That smaller file
 is also what makes [note 07](07-shipping-the-model-file.md) possible at all.
+
+## Measured
+
+Int8 test macro-F1 0.6737 against fp32's 0.6755 — a drop of **0.0018**, inside the 1.0-point
+budget, so int8 ships. The file went from 265 MB to 65 MB.
+
+Only 89.8% of individual labels agree, because the disagreements sit on low-confidence rows whose
+logit margins are smaller than quantisation noise. They were as likely to be wrong either way, so
+macro-F1 barely moves.
+
+Latency on a 2-thread container over 100 requests: p50 52.5 ms and p95 131.7 ms on a cache miss,
+p50 1.1 ms on a hit, 6.3 ms per text batched at 64.
