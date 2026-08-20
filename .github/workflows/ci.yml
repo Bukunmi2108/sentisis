@@ -1,0 +1,96 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_FROZEN: "1"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --extra dev --extra train
+      - run: uv run ruff format --check .
+      - run: uv run ruff check .
+      - run: uv run pyright
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - run: uv sync --extra dev --extra train
+      - name: Unit tests, with no services running
+        run: uv run pytest tests/unit
+      - name: Integration tests, against a real Redis
+        run: uv run pytest tests/integration
+
+  requirements:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Regenerate from the lock
+        run: make requirements
+      - name: Fail if the committed export has drifted
+        run: git diff --exit-code -- requirements.txt
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the image
+        run: docker build -t sentisis:ci .
+      - name: Run it
+        run: |
+          docker run -d --name sentisis-ci -p 8000:8000 \
+            -e SENTISIS_CACHE_ENABLED=false sentisis:ci
+      - name: Wait for readiness
+        run: |
+          for _ in $(seq 1 60); do
+            if curl -sf http://127.0.0.1:8000/ready >/dev/null; then exit 0; fi
+            sleep 2
+          done
+          echo "the container never became ready"
+          docker logs sentisis-ci
+          exit 1
+      - name: Check every endpoint answers
+        run: |
+          set -e
+          curl -sf http://127.0.0.1:8000/health > /dev/null
+          curl -sf http://127.0.0.1:8000/ready > /dev/null
+          curl -sf http://127.0.0.1:8000/ | grep -q "sentisis"
+          curl -sf -X POST http://127.0.0.1:8000/predict \
+            -H 'content-type: application/json' \
+            -d '{"text": "the pipeline works"}' | grep -q '"label"'
+      - name: Container logs
+        if: always()
+        run: docker logs sentisis-ci
