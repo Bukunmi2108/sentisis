@@ -3,7 +3,9 @@
 A sentiment analysis API. You send it text, it tells you whether the text is negative, neutral or
 positive, and how confident it is.
 
-**Live: https://sentisis.duckdns.org**
+**Live:** https://sentisis.duckdns.org
+
+**Walkthrough:** https://youtu.be/ESrndkehWf8
 
 ```bash
 curl -X POST https://sentisis.duckdns.org/predict \
