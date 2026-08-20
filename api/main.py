@@ -3,11 +3,13 @@
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import redis.asyncio as aioredis
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from prometheus_fastapi_instrumentator import Instrumentator
 
 from api.core.config import get_settings
@@ -20,6 +22,8 @@ from api.routes import router
 from api.schemas import ErrorDetail, ErrorResponse
 
 logger = logging.getLogger(__name__)
+
+WEB_DIR = Path(__file__).resolve().parents[1] / "web"
 
 DESCRIPTION = """
 Three-class sentiment analysis over short social text, served by a quantised DistilBERT
@@ -122,6 +126,7 @@ def create_app() -> FastAPI:
 
     app.include_router(router)
     Instrumentator().instrument(app).expose(app, tags=["operations"])
+    app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
     return app
 
 

@@ -23,6 +23,7 @@ COPY --from=builder /opt/venv /opt/venv
 
 WORKDIR /app
 COPY api ./api
+COPY web ./web
 COPY model/__init__.py model/preprocess.py model/onnx_runner.py ./model/
 COPY model/artifacts/distilbert ./model/artifacts/distilbert
 

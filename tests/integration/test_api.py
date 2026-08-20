@@ -207,3 +207,16 @@ def test_docs_render_with_the_worked_examples(client: TestClient) -> None:
     schema = json_of(client.get("/openapi.json"))
     example = schema["components"]["schemas"]["PredictRequest"]["examples"][0]
     assert isinstance(example["text"], str) and example["text"].strip()
+
+
+def test_the_demo_page_is_served_at_the_root(client: TestClient) -> None:
+    response = client.get("/")
+    assert response.status_code == 200
+    assert "text/html" in response.headers["content-type"]
+    assert "sentisis" in response.text
+
+
+def test_the_page_does_not_shadow_the_api(client: TestClient) -> None:
+    assert client.get("/health").status_code == 200
+    assert client.get("/docs").status_code == 200
+    assert client.post("/predict", json={"text": "hello"}).status_code == 200

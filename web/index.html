@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>sentisis - sentiment analysis</title>
+    <style>
+      :root {
+        --bg: #fbfbfa; --card: #fff; --ink: #1a1a1a; --muted: #6b6b6b;
+        --line: #e4e4e1; --accent: #1a1a1a;
+        --negative: #c0392b; --neutral: #8a8a8a; --positive: #1e8449;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #16181a; --card: #1e2124; --ink: #ececec; --muted: #9a9a9a;
+          --line: #2e3236; --accent: #ececec;
+          --negative: #e15a4b; --neutral: #9a9a9a; --positive: #46b06f;
+        }
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; padding: 2rem 1rem; background: var(--bg); color: var(--ink);
+        font: 15px/1.55 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      main { max-width: 42rem; margin: 0 auto; }
+      h1 { font-size: 1.4rem; margin: 0 0 .25rem; letter-spacing: -.01em; }
+      p.lede { margin: 0 0 1.5rem; color: var(--muted); }
+      .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1.25rem; }
+      textarea {
+        width: 100%; min-height: 6.5rem; resize: vertical; padding: .7rem .8rem;
+        border: 1px solid var(--line); border-radius: 7px; background: var(--bg);
+        color: var(--ink); font: inherit;
+      }
+      textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+      .row { display: flex; align-items: center; gap: .85rem; margin-top: .8rem; }
+      button {
+        padding: .5rem 1.1rem; border: 0; border-radius: 7px; background: var(--accent);
+        color: var(--card); font: inherit; font-weight: 600; cursor: pointer;
+      }
+      button:disabled { opacity: .4; cursor: not-allowed; }
+      .count { color: var(--muted); font-size: .85rem; margin-left: auto; }
+      #out { margin-top: 1.25rem; }
+      [hidden] { display: none !important; }
+      .verdict { font-size: 1.1rem; font-weight: 650; margin-bottom: .9rem; }
+      .bar { display: grid; grid-template-columns: 5rem 1fr 3.2rem; align-items: center; gap: .6rem; margin-bottom: .4rem; }
+      .bar span:first-child { color: var(--muted); font-size: .85rem; }
+      .track { height: 7px; background: var(--line); border-radius: 4px; overflow: hidden; }
+      .fill { height: 100%; border-radius: 4px; transition: width .25s ease; }
+      .bar b { font-variant-numeric: tabular-nums; font-weight: 500; font-size: .85rem; text-align: right; }
+      .meta { margin-top: .9rem; padding-top: .8rem; border-top: 1px solid var(--line);
+              color: var(--muted); font-size: .82rem; font-variant-numeric: tabular-nums; }
+      .error { color: var(--negative); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>sentisis</h1>
+      <p class="lede">Sentiment over short social text, from a quantised DistilBERT running on CPU.</p>
+
+      <div class="card">
+        <label for="text" class="visually-hidden" hidden>Text to classify</label>
+        <textarea id="text" placeholder="i love this &#128293;" autofocus></textarea>
+        <div class="row">
+          <button id="go" disabled>Classify</button>
+          <span class="count" id="count"></span>
+        </div>
+
+        <div id="out">
+          <p id="error" class="error" hidden></p>
+          <div id="result" hidden>
+            <div class="verdict" id="verdict"></div>
+            <div id="bars"></div>
+            <div class="meta" id="meta"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <script>
+      const LABELS = ["negative", "neutral", "positive"];
+      const MAX = 5000;
+      const text = document.getElementById("text");
+      const go = document.getElementById("go");
+      const count = document.getElementById("count");
+      const error = document.getElementById("error");
+      const result = document.getElementById("result");
+      const verdict = document.getElementById("verdict");
+      const bars = document.getElementById("bars");
+      const meta = document.getElementById("meta");
+
+      function sync() {
+        const length = text.value.length;
+        count.textContent = length ? `${length} / ${MAX}` : "";
+        count.style.color = length > MAX ? "var(--negative)" : "";
+        go.disabled = !text.value.trim() || length > MAX;
+      }
+
+      function show(prediction) {
+        error.hidden = true;
+        result.hidden = false;
+        verdict.textContent = prediction.label;
+        verdict.style.color = `var(--${prediction.label})`;
+        bars.replaceChildren(...LABELS.map(name => {
+          const row = document.createElement("div");
+          row.className = "bar";
+          const value = prediction.probabilities[name] ?? 0;
+          row.innerHTML =
+            `<span>${name}</span>` +
+            `<span class="track"><span class="fill" style="width:${(value * 100).toFixed(1)}%;background:var(--${name})"></span></span>` +
+            `<b>${(value * 100).toFixed(1)}%</b>`;
+          return row;
+        }));
+        meta.textContent =
+          `${prediction.latency_ms} ms · ${prediction.cached ? "served from cache" : "computed"} · ${prediction.model_version}`;
+      }
+
+      function fail(message) {
+        result.hidden = true;
+        error.hidden = false;
+        error.textContent = message;
+      }
+
+      async function classify() {
+        go.disabled = true;
+        go.textContent = "Classifying…";
+        try {
+          const response = await fetch("/predict", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ text: text.value }),
+          });
+          const body = await response.json();
+          if (response.ok) show(body);
+          else fail(body?.error?.message ?? `request failed with ${response.status}`);
+        } catch {
+          fail("could not reach the API");
+        } finally {
+          go.textContent = "Classify";
+          sync();
+        }
+      }
+
+      text.addEventListener("input", sync);
+      text.addEventListener("keydown", event => {
+        if ((event.metaKey || event.ctrlKey) && event.key === "Enter" && !go.disabled) classify();
+      });
+      go.addEventListener("click", classify);
+      sync();
+    </script>
+  </body>
+</html>
