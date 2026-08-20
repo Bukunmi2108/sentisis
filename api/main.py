@@ -1,4 +1,4 @@
-"""The application: lifespan, error handlers, middleware, routes and metrics."""
+"""The application: lifespan, error handlers, middleware and routes."""
 
 import logging
 from collections.abc import AsyncGenerator
@@ -10,7 +10,6 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from prometheus_fastapi_instrumentator import Instrumentator
 
 from api.core.config import get_settings
 from api.core.logging import configure_logging, request_id_var
@@ -125,7 +124,6 @@ def create_app() -> FastAPI:
     app.add_exception_handler(Exception, handle_unexpected)
 
     app.include_router(router)
-    Instrumentator().instrument(app).expose(app, tags=["operations"])
     app.mount("/", StaticFiles(directory=WEB_DIR, html=True), name="web")
     return app
 

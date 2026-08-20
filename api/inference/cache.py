@@ -7,14 +7,9 @@ from collections.abc import Mapping, Sequence
 from hashlib import sha256
 from typing import Any, cast
 
-from prometheus_client import Counter
 from redis.exceptions import RedisError
 
 logger = logging.getLogger(__name__)
-
-CACHE_HITS = Counter("sentisis_cache_hits_total", "Predictions served from the cache")
-CACHE_MISSES = Counter("sentisis_cache_misses_total", "Predictions that had to be computed")
-CACHE_ERRORS = Counter("sentisis_cache_errors_total", "Cache operations that failed")
 
 
 def cache_key(model_version: str, cleaned_text: str) -> str:
@@ -42,7 +37,6 @@ class PredictionCache:
                 await self._client.mget([cache_key(self._model_version, t) for t in unique]),
             )
         except (RedisError, OSError) as error:
-            CACHE_ERRORS.inc()
             logger.warning("cache read failed", extra={"error": str(error)})
             return {}
 
@@ -51,8 +45,6 @@ class PredictionCache:
             row = _decode(value)
             if row is not None:
                 found[text] = row
-        CACHE_HITS.inc(len(found))
-        CACHE_MISSES.inc(len(unique) - len(found))
         return found
 
     async def set_many(self, rows: Mapping[str, Sequence[float]]) -> None:
@@ -66,7 +58,6 @@ class PredictionCache:
                 pipeline.set(key, json.dumps(list(row)), ex=self._ttl)
             await pipeline.execute()
         except (RedisError, OSError) as error:
-            CACHE_ERRORS.inc()
             logger.warning("cache write failed", extra={"error": str(error)})
 
     async def ping(self) -> bool:

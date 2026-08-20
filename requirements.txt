@@ -56,10 +56,6 @@ packaging==26.3
     # via
     #   huggingface-hub
     #   onnxruntime
-prometheus-client==0.26.0
-    # via prometheus-fastapi-instrumentator
-prometheus-fastapi-instrumentator==8.1.0
-    # via sentisis
 protobuf==7.35.1
     # via onnxruntime
 pydantic==2.13.4
@@ -84,9 +80,7 @@ redis==8.1.0
 requests==2.34.2
     # via huggingface-hub
 starlette==1.6.0
-    # via
-    #   fastapi
-    #   prometheus-fastapi-instrumentator
+    # via fastapi
 tokenizers==0.22.2
     # via sentisis
 tqdm==4.70.0

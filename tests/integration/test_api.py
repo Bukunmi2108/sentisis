@@ -39,10 +39,6 @@ def test_ready_reports_a_loaded_model(client: TestClient) -> None:
     assert body["model_loaded"] is True
 
 
-def test_metrics_are_exposed(client: TestClient) -> None:
-    assert "sentisis_cache_hits_total" in client.get("/metrics").text
-
-
 def test_obvious_sentiment_is_classified(client: TestClient) -> None:
     assert predict(client, "i absolutely love this, best day ever")["label"] == "positive"
     assert predict(client, "worst experience of my life, i hate it")["label"] == "negative"

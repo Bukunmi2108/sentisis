@@ -1,6 +1,6 @@
 # 06 — Caching predictions
 
-**Status:** Accepted. Cache hit ratio is exposed on `/metrics`.
+**Status:** Accepted
 
 ## Context
 
